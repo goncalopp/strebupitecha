@@ -1,13 +1,14 @@
 #include <stdlib.h>
 #include <gtk/gtk.h>
 #include <jack/jack.h>
+#include <rubberband/rubberband-c.h>
 
 jack_port_t *ports[2];
-unsigned long int sample_rate;
-unsigned long int bufferlength;
+unsigned long int sample_rate, readposition, bufferlength;
 jack_default_audio_sample_t *buffer;
 jack_default_audio_sample_t *streambegin, *streamend;
-double readposition, speed=0;
+double speed, pitch;
+struct RubberBandState *stretcher;
 
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
@@ -19,7 +20,7 @@ gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdoubl
     	duration= bufferlength - (streamend-streambegin);
     readposition= (streambegin + (long) (duration*value)) - buffer;
 
-    if ((readposition)>= bufferlength)
+    if (readposition>= bufferlength)
 	readposition-=bufferlength;
     return 0;
     }
@@ -56,32 +57,29 @@ int process(jack_nframes_t nframes, void *notused)
     int	i;
     for (i=0; i<2; i++)
         if (ports[i]==NULL)
-		    return 0;
+	    return 0;
 
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
-
+    	
     for (i=0; i<nframes; i++)
         {
-	//printf("b: %i e: %i p: %i\n", streambegin-buffer, streamend-buffer, readposition-buffer);
+	//printf("b:%i e:%i p:%i\n", streambegin-buffer, streamend-buffer, readposition);
 		
 	*streamend=*in;
 
-	//*out=*(buffer+(int)readposition);			//no interpolation
+	*out=*(buffer+readposition);			
 	
-	double floating=readposition- (int)readposition;		//linear interpolation
-	*out=	*(buffer+(int)readposition)*(1-floating) +		//linear interpolation
-		*(buffer+(int)readposition+1)*floating;			//linear interpolation
-	
-	in++; out++; streamend++; readposition+=speed;
+	in++; out++; streamend++; readposition++;
 
 	if ((streamend-buffer)>= bufferlength)
 		streamend=buffer;
-	if ((readposition)>= bufferlength)
-		readposition=0;
 	if (streambegin==streamend)
-		streambegin++;
-	
+	    streambegin++;
+	if ((streambegin-buffer)>= bufferlength)
+		streambegin=buffer;
+	if (readposition>= bufferlength)
+		readposition=0;
 	}
 
     return 0;
@@ -99,7 +97,8 @@ int init_jack(int time)
 
     bufferlength=time*sample_rate;
     buffer=malloc(bufferlength*sizeof(jack_default_audio_sample_t));
-    readposition= 0; streambegin= buffer; streamend=buffer; speed=1;
+    readposition= 0; streambegin= buffer; streamend=buffer; speed=1; pitch=1;
+    stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1,1);
     
     ports[0] = jack_port_register (client, "inleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
     ports[1] = jack_port_register (client, "outleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
@@ -110,7 +109,7 @@ int init_jack(int time)
 
 int main (int argc, char *argv[])
     {
-    int time= 60; 			//buffer time, in seconds;
+    int time= 5; 			//buffer time, in seconds;
     if (init_jack(time)) return 1;
 
     init_gtk(argc, argv);
