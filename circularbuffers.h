@@ -11,24 +11,27 @@ struct circularbuffers *circular_new(
                         unsigned long int               sample_number);
 
 unsigned long int circular_free_space(
-                        struct circularbuffers        *bf);
+                        struct circularbuffers          *bf);
                         
-unsigned long int circular_readable_length(
-                        struct circularbuffers        *bf);
+unsigned long int circular_used_space(
+                        struct circularbuffers          *bf);
 
 void circular_seek_percentage(
-                        struct circularbuffers        *bf,
+                        struct circularbuffers          *bf,
                         double                          percentage);
 
+double circular_get_percentage(
+                        struct circularbuffers          *bf);
+
 unsigned long int circular_write(
-                        struct circularbuffers       *bf,
+                        struct circularbuffers          *bf,
                         jack_default_audio_sample_t     *source,
                         int                             buffer_number,
                         unsigned long int               sample_number,
                         int                             overwrite);
 
 unsigned long int circular_read(
-                        struct circularbuffers       *bf,
+                        struct circularbuffers          *bf,
                         jack_default_audio_sample_t     *destination,
                         int                             buffer_number,
                         unsigned long int               sample_number);

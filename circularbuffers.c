@@ -25,7 +25,7 @@ struct circularbuffers *circular_new(int buffers_number, unsigned long int sampl
     return cb;
     }
 
-unsigned long int circular_readable_length(struct circularbuffers *bf)
+unsigned long int circular_used_space(struct circularbuffers *bf)
     {
     if (bf->bufferend >= bf->bufferbegin)
     	return (bf->bufferend - bf->bufferbegin);
@@ -35,14 +35,23 @@ unsigned long int circular_readable_length(struct circularbuffers *bf)
 
 unsigned long int circular_free_space(struct circularbuffers *bf)
     {
-    return bf->bufferlength-circular_readable_length(bf)-1;
+    return bf->bufferlength-circular_used_space(bf)-1;
     }
 
 void circular_seek_percentage(struct circularbuffers *bf, double percentage)
     {
-    bf->readposition= (bf->bufferbegin + circular_readable_length(bf)*percentage);
+    bf->readposition= bf->bufferbegin + circular_used_space(bf)*percentage;
     if (bf->readposition>= bf->bufferlength)
-	bf->readposition-=bf->bufferlength;
+	    bf->readposition-=bf->bufferlength;
+    }
+
+double circular_get_percentage(struct circularbuffers *bf)
+    {
+    if (bf->readposition >= bf->bufferbegin)
+        return ((double) (bf->readposition - bf->bufferbegin)) / ((double)circular_used_space(bf));
+    else
+        return 1- ((double)(bf->bufferbegin - bf->readposition)) / ((double)circular_used_space(bf));
+    
     }
 
 unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_sample_t *source, int buffer_number, unsigned long int sample_number, int overwrite)
