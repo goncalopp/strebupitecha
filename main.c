@@ -17,7 +17,7 @@ gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdoubl
     if (streamend >= streambegin)
     	duration= streamend-streambegin;
     else
-    	duration= bufferlength - (streamend-streambegin);
+    	duration= bufferlength - (streamend-streambegin) -2;
     readposition= (streambegin + (long) (duration*value)) - buffer;
 
     if (readposition>= bufferlength)
@@ -61,7 +61,7 @@ int process(jack_nframes_t nframes, void *notused)
 
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
-    	
+ 	
     for (i=0; i<nframes; i++)
         {
 	//printf("b:%i e:%i p:%i\n", streambegin-buffer, streamend-buffer, readposition);
