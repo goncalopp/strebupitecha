@@ -25,15 +25,27 @@ struct circularbuffers *circular_new(int buffers_number, unsigned long int sampl
     return cb;
     }
 
-jack_default_audio_sample_t *circular_position_data_pointer(struct circularbuffers *bf, int buffer_number)
+jack_default_audio_sample_t *circular_reading_data_pointer(struct circularbuffers *bf, int buffer_number)
     {
     return (bf->buffers[buffer_number])+ bf->readposition;
+    }
+
+jack_default_audio_sample_t *circular_writing_data_pointer(struct circularbuffers *bf, int buffer_number)
+    {
+    return (bf->buffers[buffer_number])+ bf->bufferend;
     }
 
 unsigned long int circular_seek(struct circularbuffers *bf, unsigned long int relative_position)
     {
     bf->readposition+=relative_position;
     bf->readposition%= bf->bufferlength;
+    return 0;                               //warning: seek() does not currently check for bounds
+    }
+
+unsigned long int circular_write_seek(struct circularbuffers *bf, unsigned long int relative_position)
+    {
+    bf->bufferend+=relative_position;
+    bf->bufferend%= bf->bufferlength;
     return 0;                               //warning: seek() does not currently check for bounds
     }
 
@@ -64,6 +76,11 @@ double circular_get_percentage(struct circularbuffers *bf)
     else
         return 1- ((double)(bf->bufferbegin - bf->readposition)) / ((double)circular_used_space(bf));
     
+    }
+
+unsigned long int circular_writable_continuous(struct circularbuffers *bf)
+    {
+    return bf->bufferlength - bf->bufferend;    //available, overwriting
     }
 
 unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_sample_t *source, int buffer_number, unsigned long int sample_number, int overwrite)
