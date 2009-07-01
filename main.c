@@ -15,6 +15,16 @@ struct circularbuffers *stretcher_cbs;
 double speed, pitch;
 struct RubberBandState *stretcher;
 
+
+void dump()
+{
+printf("    dumping...");
+int i;
+    //for (i=0; i< cbs->bufferlength; i++)
+    //    printf("%1.0f ", cbs->buffers[0][i]);
+    printf("\n    begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
+}
+
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
     if (value>1) value=1; if (value<0) value=0;
@@ -60,13 +70,15 @@ int process(jack_nframes_t nframes, void *notused)
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
 
+    dump();
     int tmp= circular_write(cbs, in, 0, nframes, 1);
     printf("wrote %i samples from in to cbs\n", tmp);
-
+    dump();
+    
     unsigned long int copying_number;
     while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
 	{
-    	printf("stretching %i samples\n", copying_number);
+    	printf("stretching %i samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
 	rubberband_process(stretcher, circular_reading_data_pointer(cbs, 0), copying_number, 0);
 	circular_seek(cbs, copying_number);
 	}
