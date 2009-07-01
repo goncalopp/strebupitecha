@@ -10,6 +10,14 @@ struct circularbuffers *circular_new(
                         int                             buffers_number,
                         unsigned long int               sample_number);
 
+jack_default_audio_sample_t *circular_position_data_pointer(
+                        struct circularbuffers          *bf,
+                        int                             buffer_number);
+
+unsigned long int circular_seek(
+                        struct circularbuffers          *bf,
+                        unsigned long int               relative_position);
+
 unsigned long int circular_free_space(
                         struct circularbuffers          *bf);
                         

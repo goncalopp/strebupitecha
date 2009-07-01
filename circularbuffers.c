@@ -25,6 +25,17 @@ struct circularbuffers *circular_new(int buffers_number, unsigned long int sampl
     return cb;
     }
 
+jack_default_audio_sample_t *circular_position_data_pointer(struct circularbuffers *bf, int buffer_number)
+    {
+    return (bf->buffers[buffer_number])+ bf->readposition;
+    }
+
+unsigned long int circular_seek(struct circularbuffers *bf, unsigned long int relative_position)
+    {
+    bf->readposition+=relative_position;
+    return 0;                               //warning: seek() does not currently check for bounds
+    }
+
 unsigned long int circular_used_space(struct circularbuffers *bf)
     {
     if (bf->bufferend >= bf->bufferbegin)
