@@ -2,26 +2,23 @@
 #include <gtk/gtk.h>
 #include <jack/jack.h>
 #include <rubberband/rubberband-c.h>
+#include "circularbuffers.h"
+
+extern int min(int a, int b) ;
+
+
 
 jack_port_t *ports[2];
-unsigned long int sample_rate, readposition, bufferlength;
-jack_default_audio_sample_t *buffer;
-jack_default_audio_sample_t *streambegin, *streamend;
+unsigned long int sample_rate; 
+struct circularbuffers *cbs;
+struct circularbuffers *stretcher_cbs;
 double speed, pitch;
 struct RubberBandState *stretcher;
 
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
-    if (value>1) value=1; if (value<0) value=0;    
-    long int duration;
-    if (streamend >= streambegin)
-    	duration= streamend-streambegin;
-    else
-    	duration= bufferlength - (streamend-streambegin) -2;
-    readposition= (streambegin + (long) (duration*value)) - buffer;
-
-    if (readposition>= bufferlength)
-	readposition-=bufferlength;
+    if (value>1) value=1; if (value<0) value=0;
+    circular_seek_percentage(cbs, value);
     return 0;
     }
 
@@ -54,6 +51,7 @@ void init_gtk(int argc, char *argv[])
 
 int process(jack_nframes_t nframes, void *notused)
     {
+
     int	i;
     for (i=0; i<2; i++)
         if (ports[i]==NULL)
@@ -61,47 +59,49 @@ int process(jack_nframes_t nframes, void *notused)
 
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
- 	
-    for (i=0; i<nframes; i++)
-        {
-	//printf("b:%i e:%i p:%i\n", streambegin-buffer, streamend-buffer, readposition);
-		
-	*streamend=*in;
 
-	*out=*(buffer+readposition);			
-	
-	in++; out++; streamend++; readposition++;
+    int tmp= circular_write(cbs, in, 0, nframes, 1);
+    printf("wrote %i samples from in to cbs\n", tmp);
 
-	if ((streamend-buffer)>= bufferlength)
-		streamend=buffer;
-	if (streambegin==streamend)
-	    streambegin++;
-	if ((streambegin-buffer)>= bufferlength)
-		streambegin=buffer;
-	if (readposition>= bufferlength)
-		readposition=0;
+    unsigned long int copying_number;
+    while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
+	{
+    	printf("stretching %i samples\n", copying_number);
+	rubberband_process(stretcher, circular_reading_data_pointer(cbs, 0), copying_number, 0);
+	circular_seek(cbs, copying_number);
 	}
 
+    while (0< (copying_number = min(rubberband_available(stretcher), circular_writable_continuous(stretcher_cbs))))
+	{
+	printf("buffering %i stretched samples\n", copying_number);
+	rubberband_retrieve(stretcher, circular_writing_data_pointer(stretcher_cbs,0), copying_number);
+	circular_write_seek(stretcher_cbs, copying_number);
+    	}
+
+    if (circular_readable_continuous(stretcher_cbs)>= nframes)
+	circular_read(stretcher_cbs, out, 0, nframes);
     return 0;
     }
     
 
-int init_jack(int time)
+int init_audio(int time, int channels)
     {
     jack_client_t *client;
     if ((client = jack_client_open("strebupitecha", JackNullOption, NULL)) == 0)
 	return 1;
     jack_set_process_callback (client, process, 0);
     sample_rate= jack_get_sample_rate (client);
-    bufferlength= time*sample_rate;
-
-    bufferlength=time*sample_rate;
-    buffer=malloc(bufferlength*sizeof(jack_default_audio_sample_t));
-    readposition= 0; streambegin= buffer; streamend=buffer; speed=1; pitch=1;
-    stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1,1);
     
-    ports[0] = jack_port_register (client, "inleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
-    ports[1] = jack_port_register (client, "outleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    cbs=circular_new(1, time*sample_rate);
+    stretcher_cbs=circular_new(1, 1*sample_rate);
+    
+    speed=1; pitch=1;
+    stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1,1);
+    printf("latency: %i\n", rubberband_get_latency(stretcher));
+
+    ports[0] = jack_port_register(client, "inleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
+    ports[1] = jack_port_register(client, "outleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0);
+    
     if (jack_activate (client))
     	return 2;
     return 0;
@@ -110,7 +110,8 @@ int init_jack(int time)
 int main (int argc, char *argv[])
     {
     int time= 5; 			//buffer time, in seconds;
-    if (init_jack(time)) return 1;
+    int channels= 1;			//number of channels
+    if (init_audio(time, channels)) return 1;
 
     init_gtk(argc, argv);
     return 0;
