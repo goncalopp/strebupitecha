@@ -30,6 +30,9 @@ unsigned long int circular_write(
                         unsigned long int               sample_number,
                         int                             overwrite);
 
+unsigned long int circular_readable_continuous(
+                        struct circularbuffers          *bf);
+
 unsigned long int circular_read(
                         struct circularbuffers          *bf,
                         jack_default_audio_sample_t     *destination,

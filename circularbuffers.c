@@ -82,13 +82,18 @@ unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_
         return circular_write(bf, source, buffer_number, circular_free_space(bf), 0);
     }
 
+unsigned long int circular_readable_continuous(struct circularbuffers *bf)
+    {
+    unsigned long int readable= bf->bufferend - bf->readposition;
+    if (readable<0)
+        readable=bf->bufferlength-bf->readposition;
+    return readable;
+    }
 
 unsigned long int circular_read(struct circularbuffers *bf, jack_default_audio_sample_t *destination, int buffer_number, unsigned long int sample_number)
     {
-    int readable= bf->bufferend - bf->readposition;
-    if (readable<0)
-        readable=bf->bufferlength-bf->readposition;
-
+    
+    int readable= circular_readable_continuous(bf);
     if (sample_number>readable)
         sample_number=readable;
 
