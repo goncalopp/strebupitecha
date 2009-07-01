@@ -33,6 +33,7 @@ jack_default_audio_sample_t *circular_position_data_pointer(struct circularbuffe
 unsigned long int circular_seek(struct circularbuffers *bf, unsigned long int relative_position)
     {
     bf->readposition+=relative_position;
+    bf->readposition%= bf->bufferlength;
     return 0;                               //warning: seek() does not currently check for bounds
     }
 
