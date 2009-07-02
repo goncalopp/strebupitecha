@@ -17,13 +17,9 @@ struct RubberBandState *stretcher;
 
 
 void dump()
-{
-printf("    dumping...");
-int i;
-    //for (i=0; i< cbs->bufferlength; i++)
-    //    printf("%1.0f ", cbs->buffers[0][i]);
-    printf("\n    begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
-}
+    {
+    printf("    begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
+    }
 
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
@@ -70,18 +66,28 @@ int process(jack_nframes_t nframes, void *notused)
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
 
-    dump();
+    //dump();
     int tmp= circular_write(cbs, in, 0, nframes, 1);
-    printf("wrote %i samples from in to cbs\n", tmp);
+    //printf("wrote %i samples from in to cbs\n", tmp);
     dump();
-    
+    tmp=circular_read(cbs, out, 0, nframes);
+    printf("read %i samples from cbs to out\n", tmp);
+    if (tmp<nframes)
+	{
+	tmp=circular_read(cbs, out, 0, nframes-tmp);
+    	printf("read addicional %i samples from cbs to out\n", tmp);
+    	}
+    /*
     unsigned long int copying_number;
     while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
 	{
-    	printf("stretching %i samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
-	rubberband_process(stretcher, circular_reading_data_pointer(cbs, 0), copying_number, 0);
+	printf("latency: %i\n", rubberband_get_latency(stretcher));
+	printf("stretching %i samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
+	rubberband_process(stretcher, in, copying_number, 0);
+	printf("bu!\n");
 	circular_seek(cbs, copying_number);
 	}
+    
 
     while (0< (copying_number = min(rubberband_available(stretcher), circular_writable_continuous(stretcher_cbs))))
 	{
@@ -92,6 +98,8 @@ int process(jack_nframes_t nframes, void *notused)
 
     if (circular_readable_continuous(stretcher_cbs)>= nframes)
 	circular_read(stretcher_cbs, out, 0, nframes);
+
+    */
     return 0;
     }
     
@@ -108,7 +116,7 @@ int init_audio(int time, int channels)
     stretcher_cbs=circular_new(1, 1*sample_rate);
     
     speed=1; pitch=1;
-    stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1,1);
+    stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1.0,1.0);
     printf("latency: %i\n", rubberband_get_latency(stretcher));
 
     ports[0] = jack_port_register(client, "inleft", JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0);
@@ -121,7 +129,7 @@ int init_audio(int time, int channels)
 
 int main (int argc, char *argv[])
     {
-    int time= 5; 			//buffer time, in seconds;
+    int time= 1; 			//buffer time, in seconds;
     int channels= 1;			//number of channels
     if (init_audio(time, channels)) return 1;
 
