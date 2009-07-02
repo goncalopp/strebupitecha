@@ -18,30 +18,8 @@ jack_default_audio_sample_t *circular_writing_data_pointer(
                         struct circularbuffers          *bf,
                         int                             buffer_number);
 
-unsigned long int circular_seek(
-                        struct circularbuffers          *bf,
-                        unsigned long int               relative_position);
-
-unsigned long int circular_write_seek(
-                        struct circularbuffers          *bf,
-                        unsigned long int               relative_position);
-
-unsigned long int circular_free_space(
-                        struct circularbuffers          *bf);
-                        
-unsigned long int circular_used_space(
-                        struct circularbuffers          *bf);
-
-void circular_seek_percentage(
-                        struct circularbuffers          *bf,
-                        double                          percentage);
-
-double circular_get_percentage(
-                        struct circularbuffers          *bf);
-
 unsigned long int circular_writable_continuous(
                         struct circularbuffers          *bf);
-
 
 unsigned long int circular_write(
                         struct circularbuffers          *bf,
@@ -59,3 +37,30 @@ unsigned long int circular_read(
                         int                             buffer_number,
                         unsigned long int               sample_number);
 
+
+
+unsigned long int circular_seek_relative(
+                        struct circularbuffers          *bf,
+                        unsigned long int               relative_position);
+
+unsigned long int circular_write_seek_relative(
+                        struct circularbuffers          *bf,
+                        unsigned long int               relative_position);
+                        
+void circular_seek_percentage(
+                        struct circularbuffers          *bf,
+                        double                          percentage);
+
+double circular_get_position_percentage(
+                        struct circularbuffers          *bf);
+
+unsigned long int circular_get_position_offset(
+                        struct circularbuffers          *bf);
+
+
+
+unsigned long int circular_free_space(
+                        struct circularbuffers          *bf);
+                        
+unsigned long int circular_used_space(
+                        struct circularbuffers          *bf);

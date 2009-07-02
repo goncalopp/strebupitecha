@@ -1,14 +1,9 @@
 #include <stdlib.h>
 #include <jack/jack.h>
+#include "circularbuffers.h"
 
 int min(int a, int b) { if (b<a) return b; else return a; }
 
-
-struct circularbuffers
-    {
-    jack_default_audio_sample_t **buffers;
-    unsigned long int readposition, bufferlength, bufferbegin, bufferend;
-    };
 
 struct circularbuffers *circular_new(int buffers_number, unsigned long int sample_number)
     {
@@ -35,49 +30,6 @@ jack_default_audio_sample_t *circular_writing_data_pointer(struct circularbuffer
     return (bf->buffers[buffer_number])+ bf->bufferend;
     }
 
-unsigned long int circular_seek(struct circularbuffers *bf, unsigned long int relative_position)
-    {
-    bf->readposition+=relative_position;
-    bf->readposition%= bf->bufferlength;
-    return 0;                               //warning: seek() does not currently check for bounds
-    }
-
-unsigned long int circular_write_seek(struct circularbuffers *bf, unsigned long int relative_position)
-    {
-    bf->bufferend+=relative_position;
-    bf->bufferend%= bf->bufferlength;
-    return 0;                               //warning: seek() does not currently check for bounds
-    }
-
-unsigned long int circular_used_space(struct circularbuffers *bf)
-    {
-    if (bf->bufferend >= bf->bufferbegin)
-    	return (bf->bufferend - bf->bufferbegin);
-    else
-    	return (bf->bufferlength - (bf->bufferend - bf->bufferbegin) -2);
-    }
-
-unsigned long int circular_free_space(struct circularbuffers *bf)
-    {
-    return bf->bufferlength-circular_used_space(bf)-1;
-    }
-
-void circular_seek_percentage(struct circularbuffers *bf, double percentage)
-    {
-    bf->readposition= bf->bufferbegin + circular_used_space(bf)*percentage;
-    if (bf->readposition>= bf->bufferlength)
-	    bf->readposition-=bf->bufferlength;
-    }
-
-double circular_get_percentage(struct circularbuffers *bf)
-    {
-    if (bf->readposition >= bf->bufferbegin)
-        return ((double) (bf->readposition - bf->bufferbegin)) / ((double)circular_used_space(bf));
-    else
-        return 1- ((double)(bf->bufferbegin - bf->readposition)) / ((double)circular_used_space(bf));
-    
-    }
-
 unsigned long int circular_writable_continuous(struct circularbuffers *bf)
     {
     return bf->bufferlength - bf->bufferend;    //available, overwriting
@@ -93,17 +45,20 @@ unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_
         for (i=0; i<min(samples_to_end, sample_number); i++)
             bf->buffers[buffer_number][bf->bufferend+i]=source[i];
         int remaining= sample_number-samples_to_end;
-        
         for (i=0; i<remaining; i++)
             bf->buffers[buffer_number][i]=source[i+samples_to_end];
+
         if (remaining>0)
             bf->bufferend= remaining;
         else
             bf->bufferend+=sample_number;
+            
         if (sample_number>=space)
             {
+            unsigned long int readposition_offset=circular_get_position_offset(bf);
             bf->bufferbegin= (bf->bufferend+1) % bf->bufferlength;
-            bf->readposition= bf->bufferbegin;
+            if (readposition_offset<(sample_number-space))
+                bf->readposition= bf->bufferbegin;
             }
         return sample_number;
         }
@@ -133,3 +88,59 @@ unsigned long int circular_read(struct circularbuffers *bf, jack_default_audio_s
     bf->readposition%= bf->bufferlength;
     return sample_number;
     }
+
+
+
+
+
+unsigned long int circular_seek_relative(struct circularbuffers *bf, unsigned long int relative_position)
+    {
+    bf->readposition+=relative_position;
+    bf->readposition%= bf->bufferlength;
+    return 0;                               //warning: seek() does not currently check for bounds
+    }
+
+unsigned long int circular_write_seek_relative(struct circularbuffers *bf, unsigned long int relative_position)
+    {
+    bf->bufferend+=relative_position;
+    bf->bufferend%= bf->bufferlength;
+    return 0;                               //warning: seek() does not currently check for bounds
+    }
+
+
+unsigned long int circular_used_space(struct circularbuffers *bf)
+    {
+    if (bf->bufferend >= bf->bufferbegin)
+    	return (bf->bufferend - bf->bufferbegin);
+    else
+    	return (bf->bufferlength - (bf->bufferend - bf->bufferbegin) -2);
+    }
+
+unsigned long int circular_free_space(struct circularbuffers *bf)
+    {
+    return bf->bufferlength-circular_used_space(bf)-1;
+    }
+
+void circular_seek_percentage(struct circularbuffers *bf, double percentage)
+    {
+    bf->readposition= bf->bufferbegin + circular_used_space(bf)*percentage;
+    if (bf->readposition>= bf->bufferlength)
+	    bf->readposition-=bf->bufferlength;
+    }
+
+double circular_get_position_percentage(struct circularbuffers *bf)
+    {
+    if (bf->readposition >= bf->bufferbegin)
+        return ((double) (bf->readposition - bf->bufferbegin)) / ((double)circular_used_space(bf));
+    else
+        return 1- ((double)(bf->bufferbegin - bf->readposition)) / ((double)circular_used_space(bf));
+    }
+
+unsigned long int circular_get_position_offset(struct circularbuffers *bf)
+    {
+    if (bf->readposition >= bf->bufferbegin)
+        return bf->readposition - bf->bufferbegin;
+    else
+        return bf->bufferlength-(bf->bufferbegin - bf->readposition);
+    }
+
