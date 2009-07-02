@@ -18,7 +18,12 @@ struct RubberBandState *stretcher;
 
 void dump()
     {
-    printf("    begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
+    printf("cbs - begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
+    }
+
+void dump2()
+    {
+    printf("stretcher_cbs - begin: %i   end: %i   position %i  \n", stretcher_cbs->bufferbegin, stretcher_cbs->bufferend, stretcher_cbs->readposition);
     }
 
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
@@ -68,34 +73,43 @@ int process(jack_nframes_t nframes, void *notused)
 
     dump();
     int tmp= circular_write(cbs, in, 0, nframes, 1);
-    	printf("wrote %i samples from in to cbs\n", tmp);
+    printf("wrote %i samples from in to cbs\n", tmp);
     dump();
-    tmp=circular_read(cbs, out, 0, nframes);
-    printf("read %i samples from cbs to out\n", tmp);
 
-    /*
+    jack_default_audio_sample_t *pointertopointer[1];
+    pointertopointer[0]=circular_reading_data_pointer(cbs,0);
     unsigned long int copying_number;
     while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
 	{
-	printf("latency: %i\n", rubberband_get_latency(stretcher));
 	printf("stretching %i samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
-	rubberband_process(stretcher, in, copying_number, 0);
-	printf("bu!\n");
-	circular_seek(cbs, copying_number);
+	rubberband_process(stretcher, pointertopointer, copying_number, 0);
+	circular_seek_relative(cbs, copying_number);
+	dump();
 	}
     
-
+    dump2();
+    pointertopointer[0]=circular_writing_data_pointer(stretcher_cbs,0);
     while (0< (copying_number = min(rubberband_available(stretcher), circular_writable_continuous(stretcher_cbs))))
 	{
 	printf("buffering %i stretched samples\n", copying_number);
-	rubberband_retrieve(stretcher, circular_writing_data_pointer(stretcher_cbs,0), copying_number);
-	circular_write_seek(stretcher_cbs, copying_number);
+	rubberband_retrieve(stretcher, pointertopointer, copying_number);
+	circular_write_seek_relative(stretcher_cbs, copying_number);
+	dump2();
     	}
 
-    if (circular_readable_continuous(stretcher_cbs)>= nframes)
-	circular_read(stretcher_cbs, out, 0, nframes);
+    unsigned long int done=0;
+    if (circular_used_space(stretcher_cbs)-circular_get_position_offset(stretcher_cbs)>= nframes)
+	while (done<nframes)
+	{
+	copying_number=min(nframes-done, circular_readable_continuous(stretcher_cbs));
+	printf("outputting %i stretched samples\n", copying_number);
+	circular_read(stretcher_cbs, out, 0, copying_number);
+	done+=copying_number;
+	dump2();
+    	}
+    printf("	END CYCLE\n", copying_number);
 
-    */
+    
     return 0;
     }
     
