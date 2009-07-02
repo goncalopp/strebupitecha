@@ -45,11 +45,13 @@ unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_
         for (i=0; i<min(samples_to_end, sample_number); i++)
             bf->buffers[buffer_number][bf->bufferend+i]=source[i];
         int remaining= sample_number-samples_to_end;
-        for (i=0; i<remaining; i++)
-            bf->buffers[buffer_number][i]=source[i+samples_to_end];
 
         if (remaining>0)
+            {
+            for (i=0; i<remaining; i++)
+            bf->buffers[buffer_number][i]=source[i+samples_to_end];
             bf->bufferend= remaining;
+            }
         else
             bf->bufferend+=sample_number;
             
@@ -76,16 +78,20 @@ unsigned long int circular_readable_continuous(struct circularbuffers *bf)
 
 unsigned long int circular_read(struct circularbuffers *bf, jack_default_audio_sample_t *destination, int buffer_number, unsigned long int sample_number)
     {
+    unsigned long int i;
+    unsigned long int readable= circular_readable_continuous(bf);
+    unsigned long int copying= min(readable, sample_number);
     
-    int readable= circular_readable_continuous(bf);
-    if (sample_number>readable)
-        sample_number=readable;
-    int i;
-    for (i=0; i<sample_number; i++)
+    for (i=0; i<copying; i++)
         destination[i]= bf->buffers[buffer_number][bf->readposition+i];
-    bf->readposition+=sample_number;
+        
+    bf->readposition+=copying;
     bf->readposition%= bf->bufferlength;
-    return sample_number;
+    
+    unsigned long int remaining= sample_number-copying;
+    if ((remaining>0) && (circular_readable_continuous(bf)>0))
+        remaining=circular_read(bf, destination+readable, buffer_number, remaining);
+    return copying+remaining;
     }
 
 unsigned long int circular_seek_relative(struct circularbuffers *bf, unsigned long int relative_position)
