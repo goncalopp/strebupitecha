@@ -68,8 +68,8 @@ unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_
 
 unsigned long int circular_readable_continuous(struct circularbuffers *bf)
     {
-    unsigned long int readable= bf->bufferend - bf->readposition;
-    if (readable<0)
+    long int readable= bf->bufferend - bf->readposition;
+    if (readable< 0)
         readable=bf->bufferlength-bf->readposition;
     return readable;
     }
@@ -80,7 +80,6 @@ unsigned long int circular_read(struct circularbuffers *bf, jack_default_audio_s
     int readable= circular_readable_continuous(bf);
     if (sample_number>readable)
         sample_number=readable;
-
     int i;
     for (i=0; i<sample_number; i++)
         destination[i]= bf->buffers[buffer_number][bf->readposition+i];
@@ -88,10 +87,6 @@ unsigned long int circular_read(struct circularbuffers *bf, jack_default_audio_s
     bf->readposition%= bf->bufferlength;
     return sample_number;
     }
-
-
-
-
 
 unsigned long int circular_seek_relative(struct circularbuffers *bf, unsigned long int relative_position)
     {
@@ -106,7 +101,6 @@ unsigned long int circular_write_seek_relative(struct circularbuffers *bf, unsig
     bf->bufferend%= bf->bufferlength;
     return 0;                               //warning: seek() does not currently check for bounds
     }
-
 
 unsigned long int circular_used_space(struct circularbuffers *bf)
     {
