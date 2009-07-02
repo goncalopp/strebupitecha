@@ -66,17 +66,13 @@ int process(jack_nframes_t nframes, void *notused)
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
 
-    //dump();
+    dump();
     int tmp= circular_write(cbs, in, 0, nframes, 1);
-    //printf("wrote %i samples from in to cbs\n", tmp);
+    	printf("wrote %i samples from in to cbs\n", tmp);
     dump();
     tmp=circular_read(cbs, out, 0, nframes);
     printf("read %i samples from cbs to out\n", tmp);
-    if (tmp<nframes)
-	{
-	tmp=circular_read(cbs, out, 0, nframes-tmp);
-    	printf("read addicional %i samples from cbs to out\n", tmp);
-    	}
+
     /*
     unsigned long int copying_number;
     while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
