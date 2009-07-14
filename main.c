@@ -74,6 +74,9 @@ int process(jack_nframes_t nframes, void *notused)
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
 
+    rubberband_set_time_ratio(stretcher, speed);
+    rubberband_set_pitch_scale(stretcher, pitch);
+
     dump();
     int tmp= circular_write(cbs, in, 0, nframes, 1);
     printf("wrote %i samples from in to cbs\n", tmp);
