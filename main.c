@@ -53,6 +53,9 @@ void init_gtk(int argc, char *argv[])
     builder = gtk_builder_new ();
     gtk_builder_add_from_file (builder, "strebupitecha.glade", NULL);
     window = GTK_WIDGET (gtk_builder_get_object (builder, "window"));
+    GtkAdjustment *pos = GTK_ADJUSTMENT (gtk_builder_get_object (builder, "positionadjustment"));
+    gtk_adjustment_set_value(pos, 1);
+    
     gtk_builder_connect_signals (builder, NULL);
     g_object_unref (G_OBJECT (builder));
     gtk_widget_show (window);                
