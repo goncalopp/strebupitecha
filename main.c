@@ -116,4 +116,3 @@ int main (int argc, char *argv[])
     init_gtk(argc, argv);
     return 0;
     }
-
