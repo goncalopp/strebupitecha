@@ -18,12 +18,12 @@ struct RubberBandState *stretcher;
 
 void dump()
     {
-    printf("cbs - begin: %i   end: %i   position %i  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
+    printf("cbs - begin: %lu   end: %lu   position %lu  \n", cbs->bufferbegin, cbs->bufferend, cbs->readposition);
     }
 
 void dump2()
     {
-    printf("stretcher_cbs - begin: %i   end: %i   position %i  \n", stretcher_cbs->bufferbegin, stretcher_cbs->bufferend, stretcher_cbs->readposition);
+    printf("stretcher_cbs - begin: %lu   end: %lu   position %lu  \n", stretcher_cbs->bufferbegin, stretcher_cbs->bufferend, stretcher_cbs->readposition);
     }
 
 gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
@@ -36,7 +36,7 @@ gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdoubl
 gboolean  on_speed_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
     if (value>0.90) value=0.90; if (value<-0.90) value=-0.90;    
-    speed=1+value;
+    pitch=1+value;
     return 0;
     }
 
@@ -78,8 +78,8 @@ int process(jack_nframes_t nframes, void *notused)
     rubberband_set_pitch_scale(stretcher, pitch);
 
     dump();
-    int tmp= circular_write(cbs, in, 0, nframes, 1);
-    printf("wrote %i samples from in to cbs\n", tmp);
+    unsigned long int tmp= circular_write(cbs, in, 0, nframes, 1);
+    printf("wrote %lu samples from in to cbs\n", tmp);
     dump();
 
     jack_default_audio_sample_t *pointertopointer[1];
@@ -87,7 +87,7 @@ int process(jack_nframes_t nframes, void *notused)
     unsigned long int copying_number;
     while (0<(copying_number = min(circular_readable_continuous(cbs), rubberband_get_samples_required(stretcher))))
 	{
-	printf("stretching %i samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
+	printf("stretching %lu samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
 	rubberband_process(stretcher, pointertopointer, copying_number, 0);
 	circular_seek_relative(cbs, copying_number);
 	dump();
@@ -97,7 +97,7 @@ int process(jack_nframes_t nframes, void *notused)
     pointertopointer[0]=circular_writing_data_pointer(stretcher_cbs,0);
     while (0< (copying_number = min(rubberband_available(stretcher), circular_writable_continuous(stretcher_cbs))))
 	{
-	printf("buffering %i stretched samples\n", copying_number);
+	printf("buffering %lu stretched samples\n", copying_number);
 	rubberband_retrieve(stretcher, pointertopointer, copying_number);
 	circular_write_seek_relative(stretcher_cbs, copying_number);
 	dump2();
@@ -108,12 +108,12 @@ int process(jack_nframes_t nframes, void *notused)
 	while (done<nframes)
 	{
 	copying_number=min(nframes-done, circular_readable_continuous(stretcher_cbs));
-	printf("outputting %i stretched samples\n", copying_number);
+	printf("outputting %lu stretched samples\n", copying_number);
 	circular_read(stretcher_cbs, out, 0, copying_number);
 	done+=copying_number;
 	dump2();
     	}
-    printf("	END CYCLE\n", copying_number);
+    printf("	END CYCLE\n");
 
     
     return 0;
