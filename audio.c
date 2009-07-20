@@ -85,9 +85,12 @@ void process_with_rubberband()
 void process_not(jack_nframes_t n)
     {
     int tmp= circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, min(n, circular_writable_continuous(output_cbs)));
-    if (tmp<n)
-    	circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, n-tmp);
     circular_write_seek_relative(output_cbs, n);
+    if (tmp<n)
+    	{
+	circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, n-tmp);
+	circular_write_seek_relative(output_cbs, n-tmp);
+    	}
     }
 
 int process(jack_nframes_t nframes, void *notused)
