@@ -47,38 +47,32 @@ void execute_control_messages()
     if (seek_semaphore)
     	{
 	circular_seek_percentage(input_cbs, seek);
-    	//rubberband_reset(stretcher);
+    	rubberband_reset(stretcher);
 	circular_reset(output_cbs);
 	printf("		SEEKED\n");
 	seek_semaphore=0;
 	}
     }
 
-void process_with_rubberband()
+void process_with_rubberband(jack_nframes_t n)
     {
-    jack_default_audio_sample_t *pointertopointer[1];
-    pointertopointer[0]=circular_reading_data_pointer(input_cbs,0);
-    unsigned long int copying_number;
-    dump();
-    printf("circular readable conti %lu, required: %lu \n", circular_readable_continuous(input_cbs), rubberband_get_samples_required(stretcher));
+    jack_default_audio_sample_t *pointerarray[1];
+    while (
+    ((circular_used_space(output_cbs)-circular_get_position_offset(output_cbs))< n)
+    && (circular_readable_continuous(input_cbs)>0)
+    )
+	{
+	unsigned long int copying= min(circular_readable_continuous(input_cbs), rubberband_get_samples_required(stretcher));
+	pointerarray[0]=circular_reading_data_pointer(input_cbs, 0);
+	rubberband_process(stretcher, pointerarray, copying, 0);
+	circular_seek_relative(input_cbs, copying); 
+	//printf("stretched %lu\n", copying);
 	
-    pointertopointer[0]=circular_reading_data_pointer(input_cbs,0);
-    while (0<(copying_number = min(circular_readable_continuous(input_cbs), rubberband_get_samples_required(stretcher))))
-	{
-	printf("stretching %lu samples (%i needed)\n", copying_number, rubberband_get_samples_required(stretcher));
-	rubberband_process(stretcher, pointertopointer, copying_number, 0);
-	circular_seek_relative(input_cbs, copying_number);
-	pointertopointer[0]=circular_reading_data_pointer(input_cbs,0);
-	}
-    
-    pointertopointer[0]=circular_writing_data_pointer(output_cbs,0);
-    printf("available: %lu\n", rubberband_available(stretcher));
-    while (0< (copying_number = min(rubberband_available(stretcher), circular_writable_continuous(output_cbs))))
-	{
-	printf("buffering %lu stretched samples\n", copying_number);
-	rubberband_retrieve(stretcher, pointertopointer, copying_number);
-	circular_write_seek_relative(output_cbs, copying_number);
-	pointertopointer[0]=circular_writing_data_pointer(output_cbs,0);
+    	copying= min(circular_writable_continuous(output_cbs), rubberband_available(stretcher));
+	pointerarray[0]=circular_writing_data_pointer(output_cbs, 0);
+	rubberband_retrieve(stretcher, pointerarray, copying);
+	circular_write_seek_relative(output_cbs, copying);
+	//printf("copied %lu stretched\n", copying);
     	}
     }
 
@@ -111,7 +105,7 @@ int process(jack_nframes_t nframes, void *notused)
     if (tmp<nframes)
     	printf("error writing input buffer!");
 
-    process_with_rubberband();
+    process_with_rubberband(nframes);
     //process_not(nframes);
 
     if (circular_used_space(output_cbs)-circular_get_position_offset(output_cbs)>= nframes)
@@ -122,7 +116,7 @@ int process(jack_nframes_t nframes, void *notused)
     	}
     else
     	printf("NOT OUTPUTTING!\n");
-    //printf("	END CYCLE\n");
+    printf("	END CYCLE\n");
     
     return 0;
     }
