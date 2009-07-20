@@ -11,7 +11,7 @@ gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdoubl
 gboolean  on_speed_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
     if (value>0.90) value=0.90; if (value<-0.90) value=-0.90;    
-    pitch=1+value;
+    change_pitch(1+value);
     return 0;
     }
 
