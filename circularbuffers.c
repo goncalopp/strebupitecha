@@ -20,6 +20,13 @@ struct circularbuffers *circular_new(int buffers_number, unsigned long int sampl
     return cb;
     }
 
+void circular_reset(struct circularbuffers *bf)
+    {
+    bf->readposition=0;
+    bf->bufferbegin=0;
+    bf->bufferend=0;
+    }   
+
 jack_default_audio_sample_t *circular_reading_data_pointer(struct circularbuffers *bf, int buffer_number)
     {
     return (bf->buffers[buffer_number])+ bf->readposition;
