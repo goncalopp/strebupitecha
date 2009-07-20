@@ -6,6 +6,9 @@ struct circularbuffers
     unsigned long int readposition, bufferlength, bufferbegin, bufferend;
     };
 
+int min(int a, int b);
+
+
 struct circularbuffers *circular_new(
                         int                             buffers_number,
                         unsigned long int               sample_number);
