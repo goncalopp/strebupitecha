@@ -28,31 +28,30 @@
         </child>
         <child>
           <object class="GtkLabel" id="timebefore">
-            <property name="width_request">100</property>
+            <property name="width_request">50</property>
             <property name="height_request">20</property>
             <property name="visible">True</property>
-            <property name="label" translatable="yes">timebefore</property>
+            <property name="label" translatable="yes">0:00</property>
           </object>
           <packing>
-            <property name="x">10</property>
-            <property name="y">190</property>
+            <property name="y">210</property>
           </packing>
         </child>
         <child>
           <object class="GtkLabel" id="timeafter">
-            <property name="width_request">100</property>
+            <property name="width_request">50</property>
             <property name="height_request">20</property>
             <property name="visible">True</property>
-            <property name="label" translatable="yes">timeafter</property>
+            <property name="label" translatable="yes">0:00</property>
           </object>
           <packing>
-            <property name="x">150</property>
-            <property name="y">190</property>
+            <property name="x">165</property>
+            <property name="y">210</property>
           </packing>
         </child>
         <child>
           <object class="GtkVScale" id="speed">
-            <property name="width_request">100</property>
+            <property name="width_request">30</property>
             <property name="height_request">200</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -63,7 +62,24 @@
             <signal name="change_value" handler="on_speed_change_value"/>
           </object>
           <packing>
-            <property name="x">80</property>
+            <property name="x">70</property>
+            <property name="y">10</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkVScale" id="pitch">
+            <property name="width_request">30</property>
+            <property name="height_request">200</property>
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="orientation">vertical</property>
+            <property name="adjustment">pitchadjustment</property>
+            <property name="inverted">True</property>
+            <property name="digits">2</property>
+            <signal name="change_value" handler="on_pitch_change_value"/>
+          </object>
+          <packing>
+            <property name="x">110</property>
             <property name="y">10</property>
           </packing>
         </child>
@@ -76,9 +92,13 @@
     <property name="page_increment">10</property>
   </object>
   <object class="GtkAdjustment" id="tempoadjustment">
-    <property name="lower">-0.90000000000000002</property>
-    <property name="upper">0.90000000000000002</property>
+    <property name="lower">-0.5</property>
+    <property name="upper">0.5</property>
     <property name="step_increment">0.01</property>
-    <property name="page_increment">10</property>
+  </object>
+  <object class="GtkAdjustment" id="pitchadjustment">
+    <property name="lower">-0.5</property>
+    <property name="upper">0.5</property>
+    <property name="step_increment">0.050000000000000003</property>
   </object>
 </interface>

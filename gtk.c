@@ -10,7 +10,14 @@ gboolean  on_position_change_value(GtkRange *range, GtkScrollType scroll, gdoubl
 
 gboolean  on_speed_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
     {
-    if (value>0.90) value=0.90; if (value<-0.90) value=-0.90;    
+    if (value>0.50) value=0.50; if (value<-0.50) value=-0.50;    
+    change_speed(1+value);
+    return 0;
+    }
+
+gboolean  on_pitch_change_value(GtkRange *range, GtkScrollType scroll, gdouble value, gpointer user_data)
+    {
+    if (value>0.50) value=0.50; if (value<-0.50) value=-0.50;    
     change_pitch(1+value);
     return 0;
     }
