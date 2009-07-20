@@ -53,10 +53,10 @@ unsigned long int circular_write(struct circularbuffers *bf, jack_default_audio_
             bf->buffers[buffer_number][bf->bufferend+i]=source[i];
         int remaining= sample_number-samples_to_end;
 
-        if (remaining>0)
+        if (remaining>=0)
             {
             for (i=0; i<remaining; i++)
-            bf->buffers[buffer_number][i]=source[i+samples_to_end];
+                bf->buffers[buffer_number][i]=source[i+samples_to_end];
             bf->bufferend= remaining;
             }
         else
@@ -110,8 +110,22 @@ unsigned long int circular_seek_relative(struct circularbuffers *bf, unsigned lo
 
 unsigned long int circular_write_seek_relative(struct circularbuffers *bf, unsigned long int relative_position)
     {
-    bf->bufferend+=relative_position;
-    bf->bufferend%= bf->bufferlength;
+    int space=circular_free_space(bf);
+    int samples_to_end= bf->bufferlength - bf->bufferend;
+    int remaining= relative_position-samples_to_end;
+    if (remaining>=0)
+        bf->bufferend= remaining;
+    else
+        bf->bufferend+=relative_position;
+            
+    if (relative_position>=space)
+        {
+        unsigned long int readposition_offset=circular_get_position_offset(bf);
+        bf->bufferbegin= (bf->bufferend+1) % bf->bufferlength;
+        if (readposition_offset<(relative_position-space))
+            bf->readposition= bf->bufferbegin;
+        }
+  
     return 0;                               //warning: seek() does not currently check for bounds
     }
 
