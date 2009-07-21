@@ -9,7 +9,6 @@
 jack_client_t *jack_client;
 jack_port_t *ports[2];
 unsigned long int sample_rate;
-float *wastebuffer;
 struct circularbuffers *input_cbs;
 struct circularbuffers *output_cbs;
 struct RubberBandState *stretcher;
@@ -49,7 +48,7 @@ void execute_control_messages()
 	circular_seek_percentage(input_cbs, seek);
     	rubberband_reset(stretcher);
 	circular_reset(output_cbs);
-	printf("		SEEKED\n");
+	printf("SEEKED\n");
 	seek_semaphore=0;
 	}
     }
@@ -57,22 +56,17 @@ void execute_control_messages()
 void process_with_rubberband(jack_nframes_t n)
     {
     jack_default_audio_sample_t *pointerarray[1];
-    while (
-    ((circular_used_space(output_cbs)-circular_get_position_offset(output_cbs))< n)
-    && (circular_readable_continuous(input_cbs)>0)
-    )
+    while (((circular_used_space(output_cbs)-circular_get_position_offset(output_cbs))< n)&& (circular_readable_continuous(input_cbs)>0))
 	{
 	unsigned long int copying= min(circular_readable_continuous(input_cbs), rubberband_get_samples_required(stretcher));
 	pointerarray[0]=circular_reading_data_pointer(input_cbs, 0);
 	rubberband_process(stretcher, pointerarray, copying, 0);
 	circular_seek_relative(input_cbs, copying); 
-	//printf("stretched %lu\n", copying);
-	
+
     	copying= min(circular_writable_continuous(output_cbs), rubberband_available(stretcher));
 	pointerarray[0]=circular_writing_data_pointer(output_cbs, 0);
 	rubberband_retrieve(stretcher, pointerarray, copying);
 	circular_write_seek_relative(output_cbs, copying);
-	//printf("copied %lu stretched\n", copying);
     	}
     }
 
@@ -100,24 +94,14 @@ int process(jack_nframes_t nframes, void *notused)
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
 
-    unsigned long int tmp;
-    tmp= circular_write(input_cbs, in, 0, nframes, 1);
-    if (tmp<nframes)
-    	printf("error writing input buffer!");
+    circular_write(input_cbs, in, 0, nframes, 1);
 
     process_with_rubberband(nframes);
     //process_not(nframes);
 
     if (circular_used_space(output_cbs)-circular_get_position_offset(output_cbs)>= nframes)
-	{
-	tmp= circular_read(output_cbs, out, 0, nframes);
-	if (tmp<nframes)
-    		printf("error writing output buffer!");
-    	}
-    else
-    	printf("NOT OUTPUTTING!\n");
-    printf("	END CYCLE\n");
-    
+	circular_read(output_cbs, out, 0, nframes);
+
     return 0;
     }
     
@@ -136,8 +120,6 @@ int init_audio(int time, int channels)
     input_cbs=circular_new(1, time*sample_rate);
     output_cbs=circular_new(1, 1*sample_rate);
     stretcher= rubberband_new(sample_rate, 1+0, RubberBandOptionProcessRealTime, 1.0,1.0);
-    wastebuffer=malloc(sizeof(float)*sample_rate);
-    printf("latency: %i\n", rubberband_get_latency(stretcher));
     
     if (jack_activate (jack_client))
     	return 2;
