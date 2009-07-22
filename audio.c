@@ -4,6 +4,7 @@
 #include <rubberband/rubberband-c.h>
 #include "circularbuffers.h"
 #include "audio.h"
+#include "gtk.h"
 
 
 jack_client_t *jack_client;
@@ -15,6 +16,7 @@ struct RubberBandState *stretcher;
 
 double speed, pitch, seek;
 int speed_semaphore, pitch_semaphore, seek_semaphore;
+unsigned long int counter;
 
 
 void dump()
@@ -31,7 +33,7 @@ void seek_stream(double vector) {seek=vector; seek_semaphore=1;}
 void change_speed(double vector) {speed=vector; speed_semaphore=1;}
 void change_pitch(double vector) {pitch=vector; pitch_semaphore=1;}
 
-void execute_control_messages()
+void execute_control_messages(jack_nframes_t nframes)
     {
     if (speed_semaphore)
     	{
@@ -51,12 +53,27 @@ void execute_control_messages()
 	printf("SEEKED\n");
 	seek_semaphore=0;
 	}
+
+    if (((input_cbs->bufferlength -circular_get_position_offset(input_cbs) ) < 2*nframes )&&(speed<1.0f) )
+    	{
+	change_speed(1);
+	changesliders(-1.0f, 1-speed+0.5, -1.0f);
+    	}
+	
+    if ((circular_get_position_offset(input_cbs)  < nframes )&&(speed>1.0f) )
+    	{
+	change_speed(1);
+	changesliders(-1.0f, 1-speed+0.5, -1.0f);
+    	}
+	
+    if ((counter= ++counter % 20)==0 )
+    	changesliders(circular_get_position_percentage(input_cbs), -1.0f, -1.0f);
     }
 
-void process_with_rubberband(jack_nframes_t n)
+void process_with_rubberband(jack_nframes_t nframes)
     {
     jack_default_audio_sample_t *pointerarray[1];
-    while (((circular_used_space(output_cbs)-circular_get_position_offset(output_cbs))< n)&& (circular_readable_continuous(input_cbs)>0))
+    while (((circular_used_space(output_cbs)-circular_get_position_offset(output_cbs))< nframes)&& (circular_readable_continuous(input_cbs)>0))
 	{
 	unsigned long int copying= min(circular_readable_continuous(input_cbs), rubberband_get_samples_required(stretcher));
 	pointerarray[0]=circular_reading_data_pointer(input_cbs, 0);
@@ -70,26 +87,25 @@ void process_with_rubberband(jack_nframes_t n)
     	}
     }
 
-void process_not(jack_nframes_t n)
+void process_not(jack_nframes_t nframes)
     {
-    int tmp= circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, min(n, circular_writable_continuous(output_cbs)));
-    circular_write_seek_relative(output_cbs, n);
-    if (tmp<n)
+    int tmp= circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, min(nframes, circular_writable_continuous(output_cbs)));
+    circular_write_seek_relative(output_cbs, nframes);
+    if (tmp<nframes)
     	{
-	circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, n-tmp);
-	circular_write_seek_relative(output_cbs, n-tmp);
+	circular_read(input_cbs, circular_writing_data_pointer(output_cbs,0), 0, nframes-tmp);
+	circular_write_seek_relative(output_cbs, nframes-tmp);
     	}
     }
 
 int process(jack_nframes_t nframes, void *notused)
     {
-
     int	i;
     for (i=0; i<2; i++)
         if (ports[i]==NULL)
 	    return 0;
 
-    execute_control_messages();
+    execute_control_messages(nframes);
 
     jack_default_audio_sample_t *in = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[0], nframes);
     jack_default_audio_sample_t *out = (jack_default_audio_sample_t *) jack_port_get_buffer (ports[1], nframes);
